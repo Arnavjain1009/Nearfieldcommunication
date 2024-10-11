@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFC Reader and Writer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #message {
+            padding: 10px;
+            margin: 20px;
+            border: 1px solid #ccc;
+            display: inline-block;
+            width: 300px;
+            text-align: left;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>NFC Reader and Writer</h1>
+
+    <div id="message">No NFC activity yet</div>
+    
+    <h2>Write Data</h2>
+    <input type="text" id="nfcWriteInput" placeholder="Enter text to write" />
+    <button onclick="writeNFC()">Write to NFC</button>
+
+    <h2>Read Data</h2>
+    <button onclick="readNFC()">Read NFC Tag</button>
+
+    <script>
+        // Function to request permission and check for NFC support
+        async function checkNFCPermission() {
+            if ('NDEFReader' in window) {
+                try {
+                    const permissionStatus = await navigator.permissions.query({ name: 'nfc' });
+                    if (permissionStatus.state === 'granted') {
+                        document.getElementById('message').innerText = 'NFC permission already granted.';
+                        return true;
+                    } else if (permissionStatus.state === 'prompt') {
+                        document.getElementById('message').innerText = 'Prompting for NFC permission...';
+                        return true;
+                    } else if (permissionStatus.state === 'denied') {
+                        document.getElementById('message').innerText = 'NFC permission denied. Cannot access NFC.';
+                        return false;
+                    }
+                } catch (err) {
+                    console.log("Permission query error: ", err);
+                }
+            } else {
+                document.getElementById('message').innerText = 'Web NFC is not supported on this device or browser.';
+                return false;
+            }
+        }
+
+        // Function to write to NFC tag
+        async function writeNFC() {
+            const hasPermission = await checkNFCPermission();
+            if (!hasPermission) return;
+
+            try {
+                const ndef = new NDEFReader();
+                await ndef.write(document.getElementById('nfcWriteInput').value);
+                document.getElementById('message').innerText = 'Data successfully written to NFC tag!';
+            } catch (error) {
+                console.log(error);
+                document.getElementById('message').innerText = 'Failed to write data to NFC tag.';
+            }
+        }
+
+        // Function to read from NFC tag
+        async function readNFC() {
+            const hasPermission = await checkNFCPermission();
+            if (!hasPermission) return;
+
+            try {
+                const ndef = new NDEFReader();
+                await ndef.scan();
+                
+                ndef.onreading = event => {
+                    const decoder = new TextDecoder();
+                    for (const record of event.message.records) {
+                        document.getElementById('message').innerText = 'NFC Tag content: ' + decoder.decode(record.data);
+                    }
+                };
+
+                document.getElementById('message').innerText = 'Scan an NFC tag...';
+            } catch (error) {
+                console.log(error);
+                document.getElementById('message').innerText = 'Failed to read NFC tag.';
+            }
+        }
+
+        // On page load, check NFC support and try to get permission
+        window.onload = async () => {
+            await checkNFCPermission();
+        }
+    </script>
+</body>
+</html>
